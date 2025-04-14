@@ -6,13 +6,29 @@ app = Flask(__name__)
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
+def clean_query(raw_query):
+    if not raw_query:
+        return ""
+    # Replace commas with AND logic
+    query = raw_query.replace(",", " AND ")
+    query = query.strip()
+
+    # Add diagnostic context if missing
+    diagnostic_keywords = ["differential diagnosis", "case report", "clinical features"]
+    if not any(keyword in query.lower() for keyword in diagnostic_keywords):
+        query += " AND differential diagnosis"
+
+    return query
+
 @app.route("/search-articles", methods=["GET"])
 def search_articles():
-    query = request.args.get("query")
+    raw_query = request.args.get("query")
     max_results = request.args.get("limit", 5)
 
-    if not query:
+    if not raw_query:
         return jsonify({"error": "Missing 'query' parameter"}), 400
+
+    query = clean_query(raw_query)
 
     # Step 1: Search PubMed for PMIDs
     search_params = {
